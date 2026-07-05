@@ -1,0 +1,44 @@
+name: Boletin SJF semanal
+
+# Corre cada viernes ~13:00 hora de Guadalajara (19:00 UTC), despues de que el
+# SJF publica (10:10). Tambien se puede lanzar a mano desde la pestana Actions.
+on:
+  schedule:
+    - cron: "0 19 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generar-y-publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Instalar navegador (Chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Generar el boletin de la semana
+        run: node scripts/generate.mjs
+
+      - name: Comitear cambios (dispara el deploy de Netlify)
+        run: |
+          git config user.name "boletin-bot"
+          git config user.email "boletin-bot@users.noreply.github.com"
+          git add public/index.html public/data.json || true
+          if git diff --staged --quiet; then
+            echo "Sin cambios esta semana."
+          else
+            git commit -m "Boletin SJF: actualizacion automatica $(date -u +%Y-%m-%d)"
+            git push
+          fi
