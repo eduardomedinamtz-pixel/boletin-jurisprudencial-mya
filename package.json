@@ -1,0 +1,13 @@
+{
+  "name": "boletin-jurisprudencial-mya",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Boletin jurisprudencial semanal (SJF) del despacho Medina & Alatorre - sitio auto-generado.",
+  "scripts": {
+    "generate": "node scripts/generate.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}

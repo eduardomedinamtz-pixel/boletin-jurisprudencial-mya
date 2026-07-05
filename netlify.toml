@@ -1,0 +1,5 @@
+# Netlify: sitio estático servido desde /public. Sin build (el HTML lo genera
+# GitHub Actions cada viernes y lo comitea a public/index.html).
+[build]
+  publish = "public"
+  command = ""
