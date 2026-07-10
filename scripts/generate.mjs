@@ -101,16 +101,21 @@ return 6;
 function ambito(inst, clave, tipo, organoExacto) {
 const instL = (inst || "").toLowerCase();
 clave = clean(clave);
+// Deteccion primaria del organo por la CLAVE (mas fiable que "Instancia",
+// que a veces no se raspa bien); la Instancia queda como respaldo.
+const esPlenoSCJN = /^P\.\/J\./.test(clave) || /^P\.\s\d/.test(clave);
+const esPrimeraSala = /^1a\.\/J\./.test(clave) || /^1a\.\s\d/.test(clave);
+const esSegundaSala = /^2a\.\/J\./.test(clave) || /^2a\.\s\d/.test(clave);
 // SCJN Pleno
-if (instL.includes("pleno") && !instL.includes("regional")) {
+if (esPlenoSCJN || (instL.includes("pleno") && !instL.includes("regional"))) {
 const org = organoExacto || "Pleno de la Suprema Corte de Justicia de la Nación";
 return { org: "SCJN", org_badge: "SCJN · Pleno", oblig: true,
 territorio: "todo el país", orgName: org,
 ambito: `Obligatoria en todo el país (art. 217 Ley de Amparo). Órgano: ${org}.` };
 }
 // SCJN Salas
-if (instL.includes("primera sala") || instL.includes("segunda sala")) {
-const org = organoExacto || (instL.includes("primera") ?
+if (esPrimeraSala || esSegundaSala || instL.includes("primera sala") || instL.includes("segunda sala")) {
+const org = organoExacto || ((esPrimeraSala || instL.includes("primera")) ?
 "Primera Sala de la Suprema Corte de Justicia de la Nación" :
 "Segunda Sala de la Suprema Corte de Justicia de la Nación");
 return { org: "SCJN", org_badge: "SCJN · Sala", oblig: true,
@@ -118,7 +123,7 @@ territorio: "todo el país", orgName: org,
 ambito: `Obligatoria en todo el país (art. 217 Ley de Amparo). Órgano: ${org}.` };
 }
 // Pleno Regional
-if (instL.includes("regional")) {
+if (/^PR\./.test(clave) || instL.includes("regional")) {
 const reg = regionDeClave(clave);
 const org = organoExacto || "Pleno Regional";
 return { org: "PR", org_badge: "Pleno Regional", oblig: true, region: reg,
