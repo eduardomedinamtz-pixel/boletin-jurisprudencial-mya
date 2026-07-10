@@ -237,15 +237,37 @@ i = j + 1;
 }
 }
 
+// Fija el tamano de pagina a 50 (asi los ~45 criterios caben en una sola pagina
+// y no dependemos de la paginacion, cuyos botones son iconos sin texto).
+async function fijarTamanoPagina(page) {
+return page.evaluate(() => {
+const sel = [...document.querySelectorAll("select")].find((s) => {
+const opts = [...s.options].map((o) => (o.textContent || "").trim());
+return opts.includes("50") && (opts.includes("20") || opts.includes("10"));
+});
+if (!sel) return false;
+const opt = [...sel.options].find((o) => (o.textContent || "").trim() === "50");
+if (!opt) return false;
+sel.value = opt.value;
+sel.dispatchEvent(new Event("change", { bubbles: true }));
+sel.dispatchEvent(new Event("input", { bubbles: true }));
+return true;
+});
+}
+
 async function irSiguiente(page) {
 return page.evaluate(() => {
-const a = [...document.querySelectorAll("a,button")].find(
-(e) => (e.innerText || "").trim().toLowerCase() === "next"
-);
-if (!a) return false;
-const cls = (a.className || "") + " " + ((a.parentElement && a.parentElement.className) || "");
-if (/disabled/i.test(cls)) return false;
-a.click();
+const esSiguiente = (e) => {
+const t = ((e.innerText || "") + " " + (e.getAttribute("aria-label") || "") +
+" " + (e.title || "")).trim().toLowerCase();
+return /(^|\s)(next|siguiente)(\s|$)/.test(t);
+};
+const el = [...document.querySelectorAll("a,button")].find(esSiguiente);
+if (!el) return false;
+const cls = (el.className || "") + " " + ((el.parentElement && el.parentElement.className) || "") +
+" " + (el.getAttribute("aria-disabled") || "");
+if (/disabled|(^|\s)true(\s|$)/i.test(cls) || el.disabled) return false;
+el.click();
 return true;
 });
 }
@@ -286,6 +308,11 @@ console.log("Semana:", semana || "(no detectada)");
 await clickBuscar(page);
 await page.waitForURL(/listado-resultado-tesis/, { timeout: 45000 }).catch(() => {});
 await page.waitForTimeout(2500);
+
+// Mostrar 50 por pagina para no depender de la paginacion.
+const cambio = await fijarTamanoPagina(page);
+console.log("Tamano de pagina 50:", cambio ? "aplicado" : "no disponible");
+if (cambio) await page.waitForTimeout(2500);
 
 const registros = [];
 const vistos = new Set();
