@@ -487,7 +487,27 @@ a(`</nav><a class="sjf" href="${SJF}" target="_blank" rel="noopener">Abrir el SJ
 
 // --- Encabezado v2 (wordmark + titulo a la izquierda; recuadro de semana a la derecha) ---
 a(`<main class="main"><div class="mtop"><div class="mtop-l"><img src="${LOGOS.top}" alt="Medina & Alatorre" style="height:30px;display:block;margin-bottom:12px"><div class="h">Boletín Jurisprudencial Semanal</div><div class="s">Semanario Judicial de la Federación · Semana del ${esc(semanaTxt)}</div></div><div class="mtop-r">Semana del <b>${esc(semanaTxt)}</b><br>${tot} criterios · ${juris} jurisprudencia · ${aisl} aisladas</div></div>`);
-a(`<div class="bd"><div class="h1">Buen día 👋</div><p class="lead">Le compartimos las tesis y jurisprudencias que la SCJN publicó esta semana en el Semanario Judicial de la Federación, organizadas por materia. Use la barra lateral para navegar entre secciones en todo momento.</p><span class="chip">📅 Semana del ${esc(semanaTxt)}</span></div>`);
+// --- Nota de la corrida: si el SJF aún no publicó la semana en curso (receso),
+//     aclara que el boletín corresponde a la última semana disponible. ---
+const MESES = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6,
+  agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
+function fechaDeSemana(txt) {
+  const mm = clean(txt).match(/(\d{1,2})\s+de\s+([a-záéíóú]+)\s+de\s+(\d{4})/i);
+  if (!mm) return null;
+  const mes = MESES[mm[2].toLowerCase()];
+  if (mes === undefined) return null;
+  return new Date(Date.UTC(+mm[3], mes, +mm[1]));
+}
+const hoyMX = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Mexico_City" }));
+const hoyUTC = new Date(Date.UTC(hoyMX.getFullYear(), hoyMX.getMonth(), hoyMX.getDate()));
+const viernesHoy = new Intl.DateTimeFormat("es-MX", { weekday:"long", day:"numeric",
+  month:"long", year:"numeric", timeZone:"America/Mexico_City" }).format(hoyMX);
+const fSem = fechaDeSemana(semana);
+let notaCorrida = "";
+if (fSem && hoyUTC - fSem > 2 * 864e5) {
+  notaCorrida = `<div style="margin-top:12px;font-size:12.5px;line-height:1.5;color:#26303c;background:#fff7f0;border-left:4px solid #b5701f;border-radius:0 6px 6px 0;padding:10px 13px"><b>Nota de la corrida:</b> al ejecutarse este boletín (${esc(viernesHoy)}), el SJF aún no publicaba la semana en curso; su última actualización disponible era la del <b>${esc(semanaTxt)}</b>, por lo que este número corresponde a esa semana —la más reciente publicada—.</div>`;
+}
+a(`<div class="bd"><div class="h1">Buen día 👋</div><p class="lead">Le compartimos las tesis y jurisprudencias que la SCJN publicó esta semana en el Semanario Judicial de la Federación, organizadas por materia. Use la barra lateral para navegar entre secciones en todo momento.</p><span class="chip">📅 Semana del ${esc(semanaTxt)}</span>${notaCorrida}</div>`);
 
 // --- Secciones por materia ---
 const anchorPuesto = { SCJN: false, PR: false, TCC: false };
