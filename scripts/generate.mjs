@@ -283,18 +283,50 @@ return m ? [parseInt(m[1]), parseInt(m[2])] : [1, 1];
 });
 }
 
+// Extrae Hechos / Criterio jurídico / Justificación de forma tolerante
+// (localiza los encabezados por posición; no depende de saltos de línea exactos).
+function seccionesFicha(txt) {
+  const marcas = [
+    ["hechos", /Hechos:/i],
+    ["criterio", /Criterio(?:\s+jur[ií]dico)?:/i],
+    ["justificacion", /Justificaci[oó]n:/i],
+  ];
+  const hits = [];
+  for (const [k, re] of marcas) {
+    const m = txt.match(re);
+    if (m) hits.push({ k, ini: m.index, desde: m.index + m[0].length });
+  }
+  hits.sort((a, b) => a.ini - b.ini);
+  const fin = /(?:\n|\.)\s*(?:PLENO|PLENO REGIONAL|PRIMERA SALA|SEGUNDA SALA|TRIBUNAL COLEGIADO|Amparo(?:\s+(?:directo|en revisi[oó]n))?|Acci[oó]n de inconstitucionalidad|Controversia constitucional|Contradicci[oó]n de (?:tesis|criterios)|Recurso de|Esta tesis se public)/;
+  const out = { hechos: "", criterio: "", justificacion: "" };
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    let fen;
+    if (i + 1 < hits.length) fen = hits[i + 1].ini;
+    else {
+      const resto = txt.slice(h.desde);
+      const fm = resto.match(fin);
+      fen = fm ? h.desde + fm.index : Math.min(txt.length, h.desde + 1600);
+    }
+    out[h.k] = clean(txt.slice(h.desde, fen));
+  }
+  return out;
+}
+
 function extraeFicha(txt) {
 const g = (re) => { const m = txt.match(re); return m ? clean(m[1]) : ""; };
 const materia = g(/Materia\(s\):\s*([^\n]+)/i);
 const inst = g(/Instancia:\s*([^\n]+)/i);
 const tipoF = g(/Tipo:\s*([^\n]+)/i);
-const hechos = g(/Hechos:\s*([\s\S]*?)\n\s*(?:Criterio jur[ií]dico:|Criterio:)/i);
-const criterio = g(/Criterio jur[ií]dico:\s*([\s\S]*?)\n\s*(?:Justificaci[oó]n:|PLENO|PRIMERA SALA|SEGUNDA SALA|TRIBUNAL|PLENO REGIONAL)/i);
+const _sec = seccionesFicha(txt);
+const hechos = _sec.hechos;
+const criterio = _sec.criterio;
+const justificacion = _sec.justificacion;
 // organo exacto: linea en mayusculas antes del precedente
 let organo = "";
 const mo = txt.match(/\n\s*(PLENO REGIONAL[^\n]+|PRIMER[AO][^\n]*TRIBUNAL COLEGIADO[^\n]+CIRCUITO[^\n]*|[A-ZÁÉÍÓÚÑ ]*TRIBUNAL COLEGIADO[^\n]+CIRCUITO[^\n]*|TRIBUNAL COLEGIADO DE CIRCUITO DEL CENTRO AUXILIAR[^\n]+)\n/);
 if (mo) organo = clean(mo[1]).replace(/\.$/, "");
-return { materia, inst, tipoF, hechos, criterio, organo };
+return { materia, inst, tipoF, hechos, criterio, justificacion, organo };
 }
 
 async function main() {
@@ -345,9 +377,12 @@ r.materiaField = f.materia;
 r.inst = f.inst;
 // tipo: preferir el del listado; si no, de la ficha
 if (!r.tipo) r.tipo = /aislada/i.test(f.tipoF) ? "TA" : "J";
-const contexto = [primerasFrases(f.hechos, 1), primerasFrases(f.criterio, 2)]
-.filter(Boolean).join(" ");
-r.resuelve = recorta(contexto || f.criterio || r.rubro, 430);
+const contexto = [
+primerasFrases(f.hechos, 1),
+primerasFrases(f.criterio, 2),
+primerasFrases(f.justificacion, 1),
+].filter(Boolean).join(" ");
+r.resuelve = recorta(contexto || f.criterio || f.hechos || r.rubro, 720);
 const a = ambito(f.inst, r.clave, r.tipo, f.organo);
 Object.assign(r, a);
 r.bucket = bucketMateria(f.materia, r.rubro);
